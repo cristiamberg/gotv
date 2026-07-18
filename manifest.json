@@ -1,0 +1,18 @@
+{
+  "name": "GOTV Gestão Financeira",
+  "short_name": "GOTV",
+  "description": "App para gestão financeira de clientes e pagamentos.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3258/3258498.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
