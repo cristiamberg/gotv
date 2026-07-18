@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GOTV">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="GOTV">
+    
+    <!-- Link para o Manifesto Externo (Agora aponta para o arquivo que você criou) -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <title>GOTV - Gestão Financeira</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        /* App-like behavior resets */
+        body { 
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* Previne o pull-to-refresh nativo do navegador */
+            user-select: none; /* Impede seleção de texto acidental parecendo um site */
+        }
+        
+        /* Allow text selection only on inputs */
+        input, select, textarea { user-select: auto; }
+        
+        /* Custom Scrollbar for Desktop */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Smooth fade transitions for Alpine */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
+        
+        /* Safe area padding for newer iPhones */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-brand-200 selection:text-brand-900 overflow-x-hidden" x-data="financeApp()" x-init="initApp()">
+
+    <!-- Glassmorphism Navbar (Top) -->
+    <nav class="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 border-b border-slate-200 shadow-sm transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 sm:h-20 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-brand-500 to-indigo-600 text-white p-2 sm:p-2.5 rounded-xl shadow-lg shadow-brand-500/30">
+                        <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
+                    </div>
+                    <span class="font-bold text-slate-800 text-xl sm:text-2xl tracking-tight">GOTV<span class="text-brand-600">.</span></span>
+                </div>
+                
+                <!-- Desktop Navigation (Hidden on Mobile) -->
+                <div class="hidden sm:flex items-center space-x-2 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/60">
+                    <button @click="activeTab = 'dashboard'" :class="{'bg-white shadow-sm text-brand-600 ring-1 ring-slate-200': activeTab === 'dashboard', 'text-slate-500 hover:text-slate-700 hover:bg-slate-50': activeTab !== 'dashboard'}" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-home"></i> Dashboard
+                    </button>
+                    <button @click="activeTab = 'clientes'" :class="{'bg-white shadow-sm text-brand-600 ring-1 ring-slate-200': activeTab === 'clientes', 'text-slate-500 hover:text-slate-700 hover:bg-slate-50': activeTab !== 'clientes'}" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-users"></i> Clientes
+                    </button>
+                    <button @click="activeTab = 'gastos'" :class="{'bg-white shadow-sm text-brand-600 ring-1 ring-slate-200': activeTab === 'gastos', 'text-slate-500 hover:text-slate-700 hover:bg-slate-50': activeTab !== 'gastos'}" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2">
+                        <i class="fas fa-receipt"></i> Gastos
+                    </button>
+                </div>
+                
+                <!-- Mobile Month Selector Icon (Shows modal) -->
+                <button @click="showMonthSelector = !showMonthSelector" class="sm:hidden text-slate-500 hover:text-brand-600 p-2 rounded-full bg-slate-50 border border-slate-200">
+                    <i class="fas fa-calendar-alt"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Espaço extra em baixo no mobile para a bottom nav bar -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 min-h-screen pb-24 sm:pb-8">
+        
+        <!-- Global Month Selector (Desktop) / Dropdown (Mobile) -->
+        <div :class="{'hidden sm:flex': !showMonthSelector, 'flex': showMonthSelector}" class="mb-6 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex-col sm:flex-row items-center justify-between gap-4 transition-all hover:shadow-md animate-fade-in-down">
+            <div class="flex items-center gap-4 w-full sm:w-auto">
+                <div class="bg-indigo-50 text-indigo-600 p-3 rounded-xl hidden sm:block">
+                    <i class="fas fa-calendar-alt text-xl"></i>
+                </div>
+                <div class="w-full sm:w-auto text-center sm:text-left">
+                    <h2 class="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">Controle Financeiro</h2>
+                    <p class="text-xs sm:text-sm text-slate-500">Selecione o período para visualizar e editar os dados.</p>
+                </div>
+            </div>
+            <div class="flex items-center w-full sm:w-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                <select x-model="mesSelecionado" @change="garantirMesAtual(); showMonthSelector = false" class="block w-full sm:w-56 pl-4 pr-10 py-2.5 text-sm sm:text-base text-slate-700 font-medium bg-transparent focus:outline-none focus:ring-0 border-none cursor-pointer appearance-none relative z-10 text-center sm:text-left">
+                    <template x-for="mes in mesesDisponiveis" :key="mes.valor">
+                        <option :value="mes.valor" x-text="mes.nome" class="text-slate-800"></option>
+                    </template>
+                </select>
+                <div class="pointer-events-none absolute right-4 sm:right-14 text-slate-400">
+                    <i class="fas fa-chevron-down text-sm"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba Dashboard -->
+        <div x-show="activeTab === 'dashboard'" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="space-y-6 sm:space-y-8" x-cloak>
+            
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Visão Geral</h2>
+                <span class="px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-xs sm:text-sm font-semibold shadow-sm border border-brand-200" x-text="nomeMesSelecionado"></span>
+            </div>
+            
+            <!-- Install App Prompt (Se disponível) -->
+            <div id="install-prompt" class="hidden bg-gradient-to-r from-brand-600 to-indigo-600 rounded-2xl p-4 text-white shadow-lg flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><i class="fas fa-download"></i></div>
+                    <div>
+                        <h4 class="font-bold text-sm sm:text-base">Instalar App GOTV</h4>
+                        <p class="text-xs text-brand-100">Adicione à tela inicial para acesso rápido.</p>
+                    </div>
+                </div>
+                <button onclick="installPWA()" class="bg-white text-brand-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors w-full sm:w-auto">Instalar</button>
+            </div>
+
+            <!-- Cards Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                <!-- Entradas -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500 mb-1 relative z-10">Total Recebido</p>
+                        <h3 class="text-xl sm:text-3xl font-bold text-slate-800 relative z-10 break-all" x-text="formatCurrency(totalRecebido)"></h3>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between relative z-10">
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-medium"><i class="fas fa-arrow-up text-emerald-500 mr-1"></i> Entradas</p>
+                        <div class="bg-emerald-100 text-emerald-600 p-2 rounded-lg sm:rounded-xl">
+                            <i class="fas fa-wallet text-sm sm:text-base"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saídas -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-rose-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500 mb-1 relative z-10">Total Gastos</p>
+                        <h3 class="text-xl sm:text-3xl font-bold text-slate-800 relative z-10 break-all" x-text="formatCurrency(totalGastos)"></h3>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between relative z-10">
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-medium"><i class="fas fa-arrow-down text-rose-500 mr-1"></i> Saídas</p>
+                        <div class="bg-rose-100 text-rose-600 p-2 rounded-lg sm:rounded-xl">
+                            <i class="fas fa-receipt text-sm sm:text-base"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saldo (Ocupa 2 colunas no mobile) -->
+                <div class="col-span-2 lg:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border border-slate-700 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl group-hover:bg-brand-500/30 transition-colors duration-500"></div>
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-300 mb-1 relative z-10">Lucro Líquido</p>
+                        <h3 class="text-2xl sm:text-3xl font-bold relative z-10 break-all" :class="saldo >= 0 ? 'text-white' : 'text-rose-400'" x-text="formatCurrency(saldo)"></h3>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between relative z-10">
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-medium">Saldo do mês</p>
+                        <div class="bg-white/10 text-white p-2 rounded-lg sm:rounded-xl backdrop-blur-sm">
+                            <i class="fas fa-piggy-bank text-sm sm:text-base"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloqueados -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-500"></div>
+                    <div>
+                        <p class="text-xs sm:text-sm font-medium text-slate-500 mb-1 relative z-10">Bloqueados</p>
+                        <h3 class="text-xl sm:text-3xl font-bold text-slate-800 relative z-10" x-text="totalBloqueados"></h3>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between relative z-10">
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-medium">Contas inativas</p>
+                        <div class="bg-amber-100 text-amber-600 p-2 rounded-lg sm:rounded-xl">
+                            <i class="fas fa-user-lock text-sm sm:text-base"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progresso -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 mt-2 sm:mt-6">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-slate-800">Progresso de Recebimentos</h3>
+                        <p class="text-xs sm:text-sm text-slate-500">Meta do mês atual</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xl sm:text-2xl font-bold text-brand-600" x-text="`${porcentagemPagos}%`"></span>
+                    </div>
+                </div>
+                <div class="relative w-full h-3 sm:h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                    <div :style="`width: ${porcentagemPagos}%`" class="absolute top-0 left-0 h-full bg-gradient-to-r from-brand-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out relative">
+                        <div class="absolute top-0 left-0 w-full h-full bg-white/20" style="clip-path: polygon(0 0, 100% 0, 80% 100%, 0% 100%);"></div>
+                    </div>
+                </div>
+                <div class="mt-3 flex justify-between text-[10px] sm:text-xs font-medium text-slate-500">
+                    <span x-text="`${clientesPagosCount} clientes pagaram`"></span>
+                    <span x-text="`Faltam ${clientes.length - clientesPagosCount}`"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba Clientes -->
+        <div x-show="activeTab === 'clientes'" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="space-y-4 sm:space-y-6" x-cloak>
+            
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="relative w-full sm:max-w-md">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-slate-400"></i>
+                    </div>
+                    <input type="text" x-model="searchQuery" placeholder="Buscar por nome ou usuário..." class="block w-full pl-11 pr-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-base text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:bg-white focus:border-brand-500 transition-all">
+                </div>
+
+                <button @click="showAddClientModal = true" class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 sm:py-3 px-6 rounded-xl shadow-md shadow-brand-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">Novo Cliente</span><span class="sm:hidden">Adicionar</span>
+                </button>
+            </div>
+
+            <!-- Lista de Clientes (Mobile otimizada) -->
+            <div class="bg-white shadow-sm border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-slate-50/50 hidden md:table-header-group">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Valor do Plano</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status (Mês)</th>
+                                <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Conexão</th>
+                                <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100 block md:table-row-group">
+                            <template x-for="cliente in clientesFiltrados" :key="cliente.id">
+                                <!-- Layout Mobile (Card) / Layout Desktop (Linha) -->
+                                <tr :class="{'bg-rose-50/30': cliente.bloqueado}" class="block md:table-row p-4 md:p-0 hover:bg-slate-50/80 transition-colors group">
+                                    
+                                    <td class="block md:table-cell px-2 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                        <div class="flex items-center justify-between md:justify-start gap-4">
+                                            <div class="flex items-center gap-3 md:gap-4">
+                                                <div class="flex-shrink-0 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-brand-100 to-indigo-100 text-brand-700 font-bold flex items-center justify-center shadow-sm border border-white text-xs md:text-base">
+                                                    <span x-text="cliente.iniciais"></span>
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm md:text-base font-bold text-slate-800" x-text="cliente.nome"></div>
+                                                    <div class="text-[10px] md:text-xs font-semibold text-slate-500 bg-slate-100 inline-block px-2 py-0.5 rounded-md mt-0.5" x-text="cliente.id"></div>
+                                                </div>
+                                            </div>
+                                            <!-- Ações Rápidas Mobile -->
+                                            <div class="md:hidden flex items-center gap-2">
+                                                <button @click="abrirEditarCliente(cliente)" class="p-2 text-indigo-500 bg-indigo-50 rounded-lg">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="block md:table-cell px-2 md:px-6 py-2 md:py-4 mt-2 md:mt-0 whitespace-nowrap">
+                                        <div class="flex justify-between md:block items-center">
+                                            <span class="md:hidden text-xs font-semibold text-slate-400">Valor:</span>
+                                            <div class="text-sm text-slate-800 font-bold" x-text="formatCurrency(cliente.valor)"></div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="block md:table-cell px-2 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                        <div class="flex justify-between md:block items-center">
+                                            <span class="md:hidden text-xs font-semibold text-slate-400">Status:</span>
+                                            <button @click="togglePagamento(cliente.id)" 
+                                                    class="relative inline-flex items-center justify-center px-3 md:px-4 py-1 md:py-1.5 text-[10px] md:text-xs font-bold rounded-full transition-all duration-200 active:scale-95 shadow-sm"
+                                                    :class="isPago(cliente.id) ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'">
+                                                <span class="flex items-center gap-1.5">
+                                                    <i class="fas" :class="isPago(cliente.id) ? 'fa-check text-emerald-500' : 'fa-clock text-slate-400'"></i>
+                                                    <span x-text="isPago(cliente.id) ? 'Pago' : 'Pendente'"></span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="block md:table-cell px-2 md:px-6 py-2 md:py-4 whitespace-nowrap border-b md:border-b-0 border-slate-100 pb-4 md:pb-4">
+                                        <div class="flex justify-between md:block items-center">
+                                            <span class="md:hidden text-xs font-semibold text-slate-400">Conexão:</span>
+                                            <button @click="toggleBloqueio(cliente.id)" 
+                                                    class="relative inline-flex items-center justify-center px-3 md:px-4 py-1 md:py-1.5 text-[10px] md:text-xs font-bold rounded-full transition-all duration-200 active:scale-95 shadow-sm"
+                                                    :class="cliente.bloqueado ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-brand-50 text-brand-600 border border-brand-100'">
+                                                <span class="flex items-center gap-1.5">
+                                                    <i class="fas" :class="cliente.bloqueado ? 'fa-lock' : 'fa-check-circle'"></i>
+                                                    <span x-text="cliente.bloqueado ? 'Bloqueada' : 'Ativa'"></span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Ações Desktop -->
+                                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <button @click="abrirEditarCliente(cliente)" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button @click="confirmarRemocaoCliente(cliente.id)" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Remover">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="clientesFiltrados.length === 0">
+                                <td colspan="5" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center justify-center text-slate-400">
+                                        <i class="fas fa-search mb-3 text-4xl text-slate-200"></i>
+                                        <p class="text-sm font-medium">Nenhum cliente encontrado.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba Gastos -->
+        <div x-show="activeTab === 'gastos'" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="space-y-4 sm:space-y-6" x-cloak>
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <div class="p-2 bg-rose-50 rounded-lg"><i class="fas fa-receipt text-rose-500"></i></div>
+                    Despesas de <span x-text="nomeMesSelecionado" class="text-brand-600"></span>
+                </h2>
+                <button @click="showAddGastoModal = true" class="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2.5 px-5 rounded-xl shadow-md shadow-rose-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-minus text-sm"></i> Registrar Despesa
+                </button>
+            </div>
+
+            <div class="bg-white shadow-sm border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-slate-50/50">
+                            <tr>
+                                <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Data</th>
+                                <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Descrição</th>
+                                <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Valor</th>
+                                <th scope="col" class="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-50">
+                            <template x-for="gasto in mesDados.gastos" :key="gasto.id">
+                                <tr class="hover:bg-slate-50/80 transition-colors group">
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-slate-400" x-text="gasto.data"></td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-bold text-slate-700" x-text="gasto.descricao"></td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-bold text-rose-600" x-text="formatCurrency(gasto.valor)"></td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
+                                        <button @click="removerGasto(gasto.id)" class="p-2 text-rose-400 hover:text-rose-600 bg-rose-50 rounded-lg transition-colors" title="Remover">
+                                            <i class="fas fa-trash text-xs sm:text-sm"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="mesDados.gastos.length === 0">
+                                <td colspan="4" class="px-6 py-10 text-center text-slate-400">
+                                    <div class="flex flex-col items-center">
+                                        <div class="bg-slate-50 p-4 rounded-full mb-3"><i class="fas fa-check text-2xl text-slate-300"></i></div>
+                                        <p class="text-sm font-medium">Nenhum gasto neste mês.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone Footer -->
+        <div class="mt-8 sm:mt-12 text-center border-t border-slate-200 pt-6 sm:pt-8 pb-4">
+            <button @click="confirmarLimpezaMes()" class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 px-4 py-2 rounded-xl border border-slate-200 transition-colors active:scale-95">
+                <i class="fas fa-eraser"></i> Zerar Dados Deste Mês
+            </button>
+            <p class="mt-4 text-[10px] sm:text-xs text-slate-400 font-medium flex items-center justify-center gap-1">
+                <i class="fas fa-shield-alt"></i> App GOTV • Dados locais
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="sm:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 pb-safe z-50">
+        <div class="flex justify-around items-center h-16 px-2">
+            <button @click="activeTab = 'dashboard'" class="flex flex-col items-center justify-center w-full h-full space-y-1" :class="activeTab === 'dashboard' ? 'text-brand-600' : 'text-slate-400'">
+                <i class="fas fa-home text-xl" :class="activeTab === 'dashboard' ? 'scale-110' : ''" style="transition: transform 0.2s;"></i>
+                <span class="text-[10px] font-bold">Início</span>
+            </button>
+            <button @click="activeTab = 'clientes'" class="flex flex-col items-center justify-center w-full h-full space-y-1" :class="activeTab === 'clientes' ? 'text-brand-600' : 'text-slate-400'">
+                <i class="fas fa-users text-xl" :class="activeTab === 'clientes' ? 'scale-110' : ''" style="transition: transform 0.2s;"></i>
+                <span class="text-[10px] font-bold">Clientes</span>
+            </button>
+            <button @click="activeTab = 'gastos'" class="flex flex-col items-center justify-center w-full h-full space-y-1" :class="activeTab === 'gastos' ? 'text-brand-600' : 'text-slate-400'">
+                <i class="fas fa-receipt text-xl" :class="activeTab === 'gastos' ? 'scale-110' : ''" style="transition: transform 0.2s;"></i>
+                <span class="text-[10px] font-bold">Gastos</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Base Modal Style via x-html ou style global -->
+    <template x-if="true">
+        <style>
+            .modal-input {
+                @apply mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:text-base text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 outline-none transition-all duration-200;
+            }
+            .modal-label {
+                @apply block text-xs sm:text-sm font-semibold text-slate-700 mb-1 ml-1;
+            }
+            /* Backdrop blur para modais no iOS */
+            .ios-backdrop { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+        </style>
+    </template>
+
+    <!-- Custom Dialog (Substitui Alert/Confirm) -->
+    <div x-show="dialog.show" class="fixed z-[60] inset-0 overflow-y-auto" aria-labelledby="dialog-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="dialog.show" x-transition.opacity class="fixed inset-0 bg-slate-900/60 ios-backdrop transition-opacity" aria-hidden="true" @click="if(dialog.type==='info') closeDialog()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="dialog.show" 
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full w-full m-4">
+                
+                <div class="bg-white px-6 pt-8 pb-6">
+                    <div class="sm:flex sm:items-start flex-col items-center text-center sm:text-left">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-full mb-4 sm:mb-0 sm:mr-4 sm:h-12 sm:w-12"
+                             :class="dialog.type === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-brand-100 text-brand-600'">
+                            <i class="fas text-2xl sm:text-xl" :class="dialog.type === 'danger' ? 'fa-exclamation-triangle' : 'fa-info-circle'"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-bold text-slate-900" id="dialog-title" x-text="dialog.title"></h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-slate-500" x-text="dialog.message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 px-4 py-4 sm:px-6 flex flex-col sm:flex-row-reverse gap-2">
+                    <button type="button" @click="confirmDialog" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-3 sm:py-2 text-base font-semibold text-white focus:outline-none sm:text-sm active:scale-95 transition-transform"
+                            :class="dialog.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-600 hover:bg-brand-700'"
+                            x-text="dialog.confirmText"></button>
+                    <button x-show="dialog.type === 'danger'" type="button" @click="closeDialog" class="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-xl border border-slate-300 shadow-sm px-4 py-3 sm:py-2 bg-white text-base font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none sm:text-sm active:scale-95 transition-transform"
+                            x-text="dialog.cancelText"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Cliente -->
+    <div x-show="showAddClientModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showAddClientModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 ios-backdrop transition-opacity" aria-hidden="true" @click="showAddClientModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="showAddClientModal" 
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
+                
+                <!-- Pill para mobile drag indication -->
+                <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
+
+                <form @submit.prevent="adicionarCliente">
+                    <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="text-lg sm:text-xl font-bold text-slate-800" id="modal-title">Novo Cliente</h3>
+                        <button type="button" @click="showAddClientModal = false" class="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full transition-colors"><i class="fas fa-times text-lg"></i></button>
+                    </div>
+                    <div class="px-6 py-6 space-y-4">
+                        <div>
+                            <label class="modal-label">Nome Completo</label>
+                            <input type="text" x-model="novoCliente.nome" placeholder="Ex: Cliente João 2" required class="modal-input">
+                        </div>
+                        <div>
+                            <label class="modal-label">Usuário do Sistema</label>
+                            <input type="text" x-model="novoCliente.id" placeholder="Ex: a7gnu3" required class="modal-input">
+                        </div>
+                        <div>
+                            <label class="modal-label">Valor Cobrado (R$)</label>
+                            <input type="number" step="0.01" min="0" x-model.number="novoCliente.valor" placeholder="Ex: 30.00" required class="modal-input text-lg font-bold text-brand-600">
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-3xl pb-safe">
+                        <button type="button" @click="showAddClientModal = false" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-500/20 transition-all active:scale-95">Salvar Cliente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Cliente -->
+    <div x-show="showEditClientModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showEditClientModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 ios-backdrop transition-opacity" aria-hidden="true" @click="showEditClientModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="showEditClientModal" 
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
+                
+                <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
+
+                <form @submit.prevent="salvarEdicaoCliente">
+                    <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="text-lg sm:text-xl font-bold text-slate-800">Editar Cliente</h3>
+                        <button type="button" @click="showEditClientModal = false" class="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full transition-colors"><i class="fas fa-times text-lg"></i></button>
+                    </div>
+                    <div class="px-6 py-6 space-y-4">
+                        <div>
+                            <label class="modal-label">Nome do Cliente</label>
+                            <input type="text" x-model="clienteEditando.nome" required class="modal-input">
+                        </div>
+                        <div>
+                            <label class="modal-label">Usuário do Sistema</label>
+                            <input type="text" x-model="clienteEditando.id" class="modal-input opacity-70 cursor-not-allowed bg-slate-100" readonly title="O ID não pode ser alterado.">
+                        </div>
+                        <div>
+                            <label class="modal-label">Valor do Plano (R$)</label>
+                            <input type="number" step="0.01" min="0" x-model.number="clienteEditando.valor" required class="modal-input text-lg font-bold text-indigo-600">
+                        </div>
+                    </div>
+                    
+                    <div class="px-6 pb-2">
+                        <button type="button" @click="confirmarRemocaoCliente(clienteEditando.id); showEditClientModal = false" class="w-full text-center text-sm font-semibold text-rose-500 py-3 bg-rose-50 rounded-xl md:hidden">Excluir Cliente</button>
+                    </div>
+
+                    <div class="bg-slate-50 px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-3xl pb-safe">
+                        <button type="button" @click="showEditClientModal = false" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all active:scale-95">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Gasto -->
+    <div x-show="showAddGastoModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showAddGastoModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 ios-backdrop transition-opacity" aria-hidden="true" @click="showAddGastoModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="showAddGastoModal" 
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
+                
+                <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
+
+                <form @submit.prevent="adicionarGasto">
+                    <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="text-lg sm:text-xl font-bold text-slate-800">Registrar Despesa</h3>
+                        <button type="button" @click="showAddGastoModal = false" class="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full transition-colors"><i class="fas fa-times text-lg"></i></button>
+                    </div>
+                    <div class="px-6 py-6 space-y-4">
+                        <div>
+                            <label class="modal-label">Descrição (Ex: Recarga Painel)</label>
+                            <input type="text" x-model="novoGasto.descricao" required class="modal-input" placeholder="O que você comprou/pagou?">
+                        </div>
+                        <div>
+                            <label class="modal-label">Valor (R$)</label>
+                            <input type="number" step="0.01" min="0" x-model.number="novoGasto.valor" required class="modal-input text-lg font-bold text-rose-600" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-3xl pb-safe">
+                        <button type="button" @click="showAddGastoModal = false" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/20 transition-all active:scale-95">Registrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Registrar o Service Worker apontando para o arquivo no GitHub
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado com sucesso!', reg.scope))
+                    .catch(err => console.error('Erro ao registrar Service Worker:', err));
+            });
+        }
+
+        // Lógica para prompt de instalação (Apenas para navegadores compatíveis)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-prompt').classList.remove('hidden');
+            document.getElementById('install-prompt').classList.add('flex');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('install-prompt').classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                // Mensagem amigável para iOS (Safari não suporta o prompt nativo via botão)
+                alert("Para instalar no iOS: toque no botão 'Compartilhar' no Safari e depois em 'Adicionar à Tela de Início'.");
+            }
+        }
+
+        // App Lógico - Alpine
+        function financeApp() {
+            return {
+                activeTab: 'dashboard',
+                showMonthSelector: false,
+                
+                showAddClientModal: false,
+                showEditClientModal: false,
+                showAddGastoModal: false,
+                
+                searchQuery: '',
+                mesSelecionado: '',
+                mesesDisponiveis: [],
+
+                clientes: [],
+                historico: {},
+
+                novoCliente: { id: '', nome: '', valor: '' },
+                clienteEditando: { id: '', nome: '', valor: 0 },
+                novoGasto: { descricao: '', valor: '' },
+
+                // Sistema de Dialog próprio para mobile
+                dialog: {
+                    show: false,
+                    title: '',
+                    message: '',
+                    type: 'info', // info, danger
+                    confirmText: 'OK',
+                    cancelText: 'Cancelar',
+                    onConfirm: null
+                },
+
+                // Inicializa a aplicação e carrega os dados
+                initApp() {
+                    const hoje = new Date();
+                    const anoAtual = hoje.getFullYear();
+                    const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+                    for(let i = 0; i < 12; i++) {
+                        const valorMes = `${anoAtual}-${String(i + 1).padStart(2, '0')}`;
+                        this.mesesDisponiveis.push({ valor: valorMes, nome: `${mesesNomes[i]} ${anoAtual}` });
+                    }
+                    
+                    this.mesSelecionado = `${anoAtual}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+                    const storedClientes = localStorage.getItem('gotv_clientes_v2');
+                    const storedHistorico = localStorage.getItem('gotv_historico_v2');
+
+                    if (storedClientes) {
+                        this.clientes = JSON.parse(storedClientes);
+                    } else {
+                        // Base importada e mantida caso seja a primeira vez abrindo
+                        this.clientes = [
+                            { id: 'a7gnu3', nome: 'Cliente Amora 2', valor: 30, bloqueado: false, iniciais: 'A7' },
+                            { id: 'a9e33s', nome: 'Cliente Ruiz 2', valor: 30, bloqueado: false, iniciais: 'A9' },
+                            { id: 'qq7o23', nome: 'Cliente Ruiz', valor: 30, bloqueado: false, iniciais: 'QQ' },
+                            { id: 'c8p758', nome: 'Cliente Jonathan', valor: 30, bloqueado: false, iniciais: 'C8' },
+                            { id: '1dz658', nome: 'Cliente Gilmara', valor: 30, bloqueado: false, iniciais: '1D' },
+                            { id: '71xw80', nome: 'Cliente Thays', valor: 30, bloqueado: false, iniciais: '71' },
+                            { id: '8933hv', nome: 'Cliente Mãe do Nick', valor: 30, bloqueado: false, iniciais: '89' },
+                            { id: '82h678', nome: 'Cliente Ilgner', valor: 30, bloqueado: false, iniciais: '82' },
+                            { id: 'owa070', nome: 'Cliente Luis Carlos', valor: 30, bloqueado: false, iniciais: 'OW' },
+                            { id: '8z6f74', nome: 'Cliente Jonas', valor: 30, bloqueado: false, iniciais: '8Z' },
+                            { id: 'mjht569', nome: 'Cliente Tina', valor: 30, bloqueado: false, iniciais: 'MJ' },
+                            { id: 'kvq720164', nome: 'Cliente Reginaldo/Cliente Felipe', valor: 30, bloqueado: false, iniciais: 'KV' },
+                            { id: '93x8ap', nome: 'Cliente Jerri', valor: 30, bloqueado: false, iniciais: '93' },
+                            { id: 'dm250w', nome: 'Cliente Luis', valor: 30, bloqueado: false, iniciais: 'DM' },
+                            { id: 't80b221', nome: 'Cliente Ediclecio', valor: 30, bloqueado: false, iniciais: 'T8' },
+                            { id: 'w8i6mj7', nome: 'Cliente Wagner', valor: 30, bloqueado: false, iniciais: 'W8' },
+                            { id: 'nicktv563', nome: 'Cliente Nicolas/Cliente Uelson', valor: 30, bloqueado: false, iniciais: 'NI' },
+                            { id: 'q586gb', nome: 'Cliente Jeferson', valor: 30, bloqueado: false, iniciais: 'Q5' },
+                            { id: '9iimjhg6', nome: 'Cliente José', valor: 30, bloqueado: false, iniciais: '9I' },
+                            { id: '65mbg4', nome: 'Cliente Isabella', valor: 30, bloqueado: false, iniciais: '65' },
+                            { id: '168b9120s', nome: 'Cliente Karol/Cliente Angelo 2', valor: 30, bloqueado: false, iniciais: '16' },
+                            { id: '255pgfh04', nome: 'Cliente Everton', valor: 30, bloqueado: false, iniciais: '25' },
+                            { id: 'altv573a', nome: 'Cliente Alysson', valor: 30, bloqueado: false, iniciais: 'AL' },
+                            { id: 'r881036954', nome: 'Cliente Sidney', valor: 30, bloqueado: false, iniciais: 'R8' },
+                            { id: 'zpq6lre92', nome: 'Cliente Stalone', valor: 30, bloqueado: false, iniciais: 'ZP' },
+                            { id: 'k8t60p', nome: 'Cliente Marco Túlio 2', valor: 30, bloqueado: false, iniciais: 'K8' },
+                            { id: 'tkj7642', nome: 'Cliente Marco Túlio/Cliente Jary', valor: 30, bloqueado: false, iniciais: 'TK' },
+                            { id: '2s61x3v33', nome: 'Cliente Lauro', valor: 30, bloqueado: false, iniciais: '2S' },
+                            { id: '13028e40b', nome: 'Cliente Israel', valor: 30, bloqueado: false, iniciais: '13' },
+                            { id: 'mbh53ft', nome: 'Cliente Angelo', valor: 30, bloqueado: false, iniciais: 'MB' },
+                            { id: 'kk9l96w69e', nome: 'Cliente Talita', valor: 30, bloqueado: false, iniciais: 'KK' },
+                            { id: 'canis589634', nome: 'Cliente Canindé', valor: 30, bloqueado: false, iniciais: 'CA' },
+                            { id: 'mgh5g6yt', nome: 'Cliente Edborton/Filho', valor: 30, bloqueado: false, iniciais: 'MG' },
+                            { id: 'q5a6yv13', nome: 'Cliente Priscila/Cliente Amora', valor: 30, bloqueado: false, iniciais: 'Q5' },
+                            { id: 'l09y19p84u', nome: 'Cliente Margarete/Pedro', valor: 30, bloqueado: false, iniciais: 'L0' },
+                            { id: 'hgvt654', nome: 'Cliente Thaisa/Ricardo 2', valor: 30, bloqueado: false, iniciais: 'HG' },
+                            { id: 'bnmtg54', nome: 'Cliente Valdenilton/Sarah', valor: 30, bloqueado: false, iniciais: 'BN' },
+                            { id: 'hjnm56f', nome: 'Cliente Thays', valor: 30, bloqueado: false, iniciais: 'HJ' },
+                            { id: 'mjhtg543', nome: 'Cliente Gilmar', valor: 30, bloqueado: false, iniciais: 'MJ' },
+                            { id: 'kmjhyt64', nome: 'Cliente Thays/Cliente KM', valor: 30, bloqueado: false, iniciais: 'KM' },
+                            { id: '573ghbt64', nome: 'Cliente Chirlane/Sogro', valor: 30, bloqueado: false, iniciais: '57' },
+                            { id: 'd790409', nome: 'Cliente David', valor: 30, bloqueado: false, iniciais: 'D7' },
+                            { id: 'h72w98b6', nome: 'Cliente Bruna', valor: 30, bloqueado: false, iniciais: 'H7' },
+                            { id: 'a5hg65t', nome: 'Cliente Ricardo/Cliente Thais', valor: 30, bloqueado: false, iniciais: 'A5' }
+                        ];
+                    }
+
+                    if (storedHistorico) {
+                        this.historico = JSON.parse(storedHistorico);
+                    }
+
+                    this.garantirMesAtual();
+                    this.salvarDados();
+                },
+
+                // Métodos do Custom Dialog
+                showCustomDialog(title, message, type = 'info', onConfirm = null) {
+                    this.dialog.title = title;
+                    this.dialog.message = message;
+                    this.dialog.type = type;
+                    this.dialog.confirmText = type === 'danger' ? 'Sim, Confirmar' : 'OK';
+                    this.dialog.cancelText = 'Cancelar';
+                    this.dialog.onConfirm = onConfirm;
+                    this.dialog.show = true;
+                },
+                closeDialog() {
+                    this.dialog.show = false;
+                    setTimeout(() => { this.dialog.onConfirm = null; }, 300);
+                },
+                confirmDialog() {
+                    if (this.dialog.onConfirm) this.dialog.onConfirm();
+                    this.closeDialog();
+                },
+
+                garantirMesAtual() {
+                    if (!this.historico[this.mesSelecionado]) {
+                        this.historico[this.mesSelecionado] = { pagos: [], gastos: [] };
+                    }
+                },
+
+                get mesDados() { return this.historico[this.mesSelecionado] || { pagos: [], gastos: [] }; },
+                get nomeMesSelecionado() {
+                    const mes = this.mesesDisponiveis.find(m => m.valor === this.mesSelecionado);
+                    return mes ? mes.nome : this.mesSelecionado;
+                },
+                get clientesFiltrados() {
+                    if (!this.searchQuery) return this.clientes;
+                    const query = this.searchQuery.toLowerCase();
+                    return this.clientes.filter(c => 
+                        c.nome.toLowerCase().includes(query) || 
+                        c.id.toLowerCase().includes(query)
+                    );
+                },
+                get totalRecebido() {
+                    return this.mesDados.pagos.reduce((acumulado, idUsuario) => {
+                        const cliente = this.clientes.find(c => c.id === idUsuario);
+                        return acumulado + (cliente ? parseFloat(cliente.valor) : 0);
+                    }, 0);
+                },
+                get totalGastos() { return this.mesDados.gastos.reduce((acc, gasto) => acc + parseFloat(gasto.valor), 0); },
+                get saldo() { return this.totalRecebido - this.totalGastos; },
+                get totalBloqueados() { return this.clientes.filter(c => c.bloqueado).length; },
+                get clientesPagosCount() { return this.mesDados.pagos.length; },
+                get porcentagemPagos() {
+                    if (this.clientes.length === 0) return 0;
+                    return Math.round((this.clientesPagosCount / this.clientes.length) * 100);
+                },
+
+                isPago(id) { return this.mesDados.pagos.includes(id); },
+                formatCurrency(value) {
+                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+                },
+                gerarIniciais(usuarioId) {
+                    if(!usuarioId) return 'XX';
+                    return usuarioId.substring(0, 2).toUpperCase();
+                },
+
+                // Ações do usuário
+                adicionarCliente() {
+                    const iniciais = this.gerarIniciais(this.novoCliente.id);
+                    if(this.clientes.some(c => c.id === this.novoCliente.id)) {
+                        this.showCustomDialog('Ops!', 'Este usuário de sistema já está cadastrado na lista.', 'info');
+                        return;
+                    }
+                    this.clientes.unshift({
+                        id: this.novoCliente.id,
+                        nome: this.novoCliente.nome,
+                        valor: parseFloat(this.novoCliente.valor) || 0,
+                        bloqueado: false,
+                        iniciais: iniciais
+                    });
+                    this.salvarDados();
+                    this.novoCliente = { id: '', nome: '', valor: '' };
+                    this.showAddClientModal = false;
+                },
+
+                abrirEditarCliente(cliente) {
+                    this.clienteEditando = JSON.parse(JSON.stringify(cliente));
+                    this.showEditClientModal = true;
+                },
+
+                salvarEdicaoCliente() {
+                    const index = this.clientes.findIndex(c => c.id === this.clienteEditando.id);
+                    if (index !== -1) {
+                        this.clienteEditando.valor = parseFloat(this.clienteEditando.valor) || 0;
+                        this.clientes[index] = this.clienteEditando;
+                        this.salvarDados();
+                    }
+                    this.showEditClientModal = false;
+                },
+
+                confirmarRemocaoCliente(id) {
+                    this.showCustomDialog(
+                        'Remover Cliente', 
+                        'Tem certeza? O histórico dele ficará salvo, mas ele sumirá da lista.', 
+                        'danger', 
+                        () => {
+                            this.clientes = this.clientes.filter(c => c.id !== id);
+                            this.salvarDados();
+                        }
+                    );
+                },
+
+                togglePagamento(id) {
+                    this.garantirMesAtual();
+                    const indexPago = this.mesDados.pagos.indexOf(id);
+                    if (indexPago > -1) {
+                        this.historico[this.mesSelecionado].pagos.splice(indexPago, 1);
+                    } else {
+                        this.historico[this.mesSelecionado].pagos.push(id);
+                    }
+                    this.salvarDados();
+                },
+
+                toggleBloqueio(id) {
+                    const cliente = this.clientes.find(c => c.id === id);
+                    if(cliente){
+                        cliente.bloqueado = !cliente.bloqueado;
+                        this.salvarDados();
+                    }
+                },
+
+                adicionarGasto() {
+                    this.garantirMesAtual();
+                    const dataAtual = new Date().toLocaleDateString('pt-BR');
+                    this.historico[this.mesSelecionado].gastos.unshift({
+                        id: Date.now(),
+                        descricao: this.novoGasto.descricao,
+                        valor: parseFloat(this.novoGasto.valor),
+                        data: dataAtual
+                    });
+                    this.salvarDados();
+                    this.novoGasto = { descricao: '', valor: '' };
+                    this.showAddGastoModal = false;
+                },
+
+                removerGasto(idGasto) {
+                    this.historico[this.mesSelecionado].gastos = this.historico[this.mesSelecionado].gastos.filter(g => g.id !== idGasto);
+                    this.salvarDados();
+                },
+
+                salvarDados() {
+                    localStorage.setItem('gotv_clientes_v2', JSON.stringify(this.clientes));
+                    localStorage.setItem('gotv_historico_v2', JSON.stringify(this.historico));
+                },
+
+                confirmarLimpezaMes() {
+                    this.showCustomDialog(
+                        'Zerar Mês', 
+                        'Cuidado! Isso apagará quem pagou e todos os gastos DESTE mês selecionado.', 
+                        'danger', 
+                        () => {
+                            this.historico[this.mesSelecionado] = { pagos: [], gastos: [] };
+                            this.salvarDados();
+                        }
+                    );
+                }
+            }
+        }
+    </script>
+</body>
+</html>
