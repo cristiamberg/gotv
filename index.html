@@ -12,11 +12,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="GOTV">
     
-    <!-- Ícone para o iOS (iPhone/iPad) apontando para a sua logo.png -->
-    <link rel="apple-touch-icon" href="./icone-app.png">
+    <!-- Ícone para o iOS (iPhone/iPad) apontando para a sua imagem com cache buster -->
+    <link rel="apple-touch-icon" href="./icone-app.png?v=2">
     
-    <!-- Link para o Manifesto Externo -->
-    <link rel="manifest" href="./manifest.json">
+    <!-- Link para o Manifesto Externo com cache buster -->
+    <link rel="manifest" href="./manifest.json?v=2">
     
     <title>GOTV - Gestão Financeira</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -63,8 +63,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 sm:h-20 items-center">
                 <div class="flex items-center gap-3">
-                    <!-- Mantive ./logo.png conforme o seu GitHub -->
-                    <img src="./icone-app.png" alt="GOTV Logo" class="h-10 sm:h-12 w-auto object-contain drop-shadow-sm rounded-lg" onerror="this.src='https://placehold.co/150x50/1a73e8/ffffff?text=GOTV'">
+                    <img src="./icone-app.png?v=2" alt="GOTV Logo" class="h-10 sm:h-12 w-auto object-contain drop-shadow-sm rounded-lg" onerror="this.src='https://placehold.co/150x50/1a73e8/ffffff?text=GOTV'">
                 </div>
                 
                 <!-- Desktop Navigation (Hidden on Mobile) -->
@@ -423,9 +422,6 @@
         </div>
     </div>
 
-    <!-- Modais omitidos para economizar espaço (eles permanecem exatamente iguais ao original) -->
-    
-    <!-- Base Modal Style via x-html ou style global -->
     <template x-if="true">
         <style>
             .modal-input {
@@ -434,12 +430,11 @@
             .modal-label {
                 @apply block text-xs sm:text-sm font-semibold text-slate-700 mb-1 ml-1;
             }
-            /* Backdrop blur para modais no iOS */
             .ios-backdrop { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
         </style>
     </template>
 
-    <!-- Custom Dialog (Substitui Alert/Confirm) -->
+    <!-- Modais - Custom Dialog -->
     <div x-show="dialog.show" class="fixed z-[60] inset-0 overflow-y-auto" aria-labelledby="dialog-title" role="dialog" aria-modal="true" x-cloak>
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="dialog.show" x-transition.opacity class="fixed inset-0 bg-slate-900/60 ios-backdrop transition-opacity" aria-hidden="true" @click="if(dialog.type==='info') closeDialog()"></div>
@@ -478,6 +473,7 @@
         </div>
     </div>
 
+    <!-- Modais Omitidos no código de exibição para facilitar leitura, mas presentes. Apenas repassando os modais já existentes sem alteração. -->
     <!-- Modal Adicionar Cliente -->
     <div x-show="showAddClientModal" class="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -491,9 +487,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
                  class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
-                
                 <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
-
                 <form @submit.prevent="adicionarCliente">
                     <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
                         <h3 class="text-lg sm:text-xl font-bold text-slate-800" id="modal-title">Novo Cliente</h3>
@@ -535,9 +529,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
                  class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
-                
                 <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
-
                 <form @submit.prevent="salvarEdicaoCliente">
                     <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
                         <h3 class="text-lg sm:text-xl font-bold text-slate-800">Editar Cliente</h3>
@@ -557,11 +549,9 @@
                             <input type="number" step="0.01" min="0" x-model.number="clienteEditando.valor" required class="modal-input text-lg font-bold text-indigo-600">
                         </div>
                     </div>
-                    
                     <div class="px-6 pb-2">
                         <button type="button" @click="confirmarRemocaoCliente(clienteEditando.id); showEditClientModal = false" class="w-full text-center text-sm font-semibold text-rose-500 py-3 bg-rose-50 rounded-xl md:hidden">Excluir Cliente</button>
                     </div>
-
                     <div class="bg-slate-50 px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-3xl pb-safe">
                         <button type="button" @click="showEditClientModal = false" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
                         <button type="submit" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all active:scale-95">Salvar Alterações</button>
@@ -584,9 +574,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
                  class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
-                
                 <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
-
                 <form @submit.prevent="adicionarGasto">
                     <div class="bg-white px-6 pt-4 sm:pt-6 pb-4 border-b border-slate-100 flex justify-between items-center">
                         <h3 class="text-lg sm:text-xl font-bold text-slate-800">Registrar Despesa</h3>
@@ -612,9 +600,10 @@
     </div>
 
     <script>
+        // Registrar o Service Worker com cache buster
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
+                navigator.serviceWorker.register('./sw.js?v=2')
                     .then(reg => console.log('Service Worker registrado com sucesso!', reg.scope))
                     .catch(err => console.warn('Service Worker ignorado no ambiente atual:', err.message));
             });
@@ -680,7 +669,7 @@
                     show: false,
                     title: '',
                     message: '',
-                    type: 'info', // info, danger
+                    type: 'info',
                     confirmText: 'OK',
                     cancelText: 'Cancelar',
                     onConfirm: null
@@ -704,7 +693,6 @@
                     if (storedClientes) {
                         this.clientes = JSON.parse(storedClientes);
                     } else {
-                        // Base completa restaurada
                         this.clientes = [
                             { id: 'a7gnu3', nome: 'Cliente Amora 2', valor: 30, bloqueado: false, iniciais: 'A7' },
                             { id: 'a9e33s', nome: 'Cliente Ruiz 2', valor: 30, bloqueado: false, iniciais: 'A9' },
