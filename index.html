@@ -12,7 +12,10 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="GOTV">
     
-    <!-- Link para o Manifesto Externo (Agora aponta para o arquivo que você criou) -->
+    <!-- Ícone para o iOS (iPhone/iPad) apontando para a sua logo.png -->
+    <link rel="apple-touch-icon" href="./logo.png">
+    
+    <!-- Link para o Manifesto Externo -->
     <link rel="manifest" href="./manifest.json">
     
     <title>GOTV - Gestão Financeira</title>
@@ -27,9 +30,7 @@
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        // Azul extraído da logo GOTV
                         brand: { 50: '#eff6ff', 100: '#dbeafe', 400: '#60a5fa', 500: '#1a73e8', 600: '#155dbb', 700: '#10468e', 900: '#0a2e5c' },
-                        // Laranja extraído dos detalhes da claquete
                         accent: { 50: '#fff7ed', 100: '#ffedd5', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 900: '#7c2d12' }
                     }
                 }
@@ -39,29 +40,19 @@
     
     <style>
         [x-cloak] { display: none !important; }
-        
-        /* App-like behavior resets */
         body { 
             background-color: #f8fafc;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none; /* Previne o pull-to-refresh nativo do navegador */
-            user-select: none; /* Impede seleção de texto acidental parecendo um site */
+            overscroll-behavior-y: none;
+            user-select: none;
         }
-        
-        /* Allow text selection only on inputs */
         input, select, textarea { user-select: auto; }
-        
-        /* Custom Scrollbar for Desktop */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Smooth fade transitions for Alpine */
         .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
-        
-        /* Safe area padding for newer iPhones */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
@@ -72,8 +63,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 sm:h-20 items-center">
                 <div class="flex items-center gap-3">
-                    <!-- Logo inserida aqui -->
-                    <img src="./logo.png" alt="GOTV Logo" class="h-10 sm:h-12 w-auto object-contain drop-shadow-sm">
+                    <!-- Mantive ./logo.png conforme o seu GitHub -->
+                    <img src="./logo.png" alt="GOTV Logo" class="h-10 sm:h-12 w-auto object-contain drop-shadow-sm rounded-lg" onerror="this.src='https://placehold.co/150x50/1a73e8/ffffff?text=GOTV'">
                 </div>
                 
                 <!-- Desktop Navigation (Hidden on Mobile) -->
@@ -89,7 +80,6 @@
                     </button>
                 </div>
                 
-                <!-- Mobile Month Selector Icon (Shows modal) -->
                 <button @click="showMonthSelector = !showMonthSelector" class="sm:hidden text-slate-500 hover:text-brand-600 p-2 rounded-full bg-slate-50 border border-slate-200">
                     <i class="fas fa-calendar-alt"></i>
                 </button>
@@ -97,10 +87,9 @@
         </div>
     </nav>
 
-    <!-- Espaço extra em baixo no mobile para a bottom nav bar -->
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 min-h-screen pb-24 sm:pb-8">
         
-        <!-- Global Month Selector (Desktop) / Dropdown (Mobile) -->
+        <!-- Global Month Selector -->
         <div :class="{'hidden sm:flex': !showMonthSelector, 'flex': showMonthSelector}" class="mb-6 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex-col sm:flex-row items-center justify-between gap-4 transition-all hover:shadow-md animate-fade-in-down">
             <div class="flex items-center gap-4 w-full sm:w-auto">
                 <div class="bg-indigo-50 text-indigo-600 p-3 rounded-xl hidden sm:block">
@@ -135,7 +124,6 @@
                 <span class="px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-xs sm:text-sm font-semibold shadow-sm border border-brand-200" x-text="nomeMesSelecionado"></span>
             </div>
             
-            <!-- Install App Prompt (Se disponível) -->
             <div id="install-prompt" class="hidden bg-slate-900 rounded-2xl p-4 text-white shadow-lg border border-slate-800 flex-col sm:flex-row items-center justify-between gap-4 mb-4">
                 <div class="flex items-center gap-3">
                     <div class="bg-brand-600/20 text-brand-400 p-2 rounded-xl backdrop-blur-sm"><i class="fas fa-download"></i></div>
@@ -179,7 +167,7 @@
                     </div>
                 </div>
 
-                <!-- Saldo (Ocupa 2 colunas no mobile) -->
+                <!-- Saldo -->
                 <div class="col-span-2 lg:col-span-1 bg-slate-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border border-slate-800 flex flex-col justify-between relative overflow-hidden group">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-accent-500/10 rounded-full blur-2xl group-hover:bg-accent-500/20 transition-colors duration-500"></div>
                     <div class="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-brand-500/10 rounded-full blur-2xl group-hover:bg-brand-500/20 transition-colors duration-500"></div>
@@ -254,7 +242,7 @@
                 </button>
             </div>
 
-            <!-- Lista de Clientes (Mobile otimizada) -->
+            <!-- Lista de Clientes -->
             <div class="bg-white shadow-sm border border-slate-100 rounded-2xl sm:rounded-3xl overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-100">
@@ -269,7 +257,6 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-100 block md:table-row-group">
                             <template x-for="cliente in clientesFiltrados" :key="cliente.id">
-                                <!-- Layout Mobile (Card) / Layout Desktop (Linha) -->
                                 <tr :class="{'bg-rose-50/30': cliente.bloqueado}" class="block md:table-row p-4 md:p-0 hover:bg-slate-50/80 transition-colors group">
                                     
                                     <td class="block md:table-cell px-2 md:px-6 py-2 md:py-4 whitespace-nowrap">
@@ -283,7 +270,6 @@
                                                     <div class="text-[10px] md:text-xs font-semibold text-slate-500 bg-slate-100 inline-block px-2 py-0.5 rounded-md mt-0.5" x-text="cliente.id"></div>
                                                 </div>
                                             </div>
-                                            <!-- Ações Rápidas Mobile -->
                                             <div class="md:hidden flex items-center gap-2">
                                                 <button @click="abrirEditarCliente(cliente)" class="p-2 text-indigo-500 bg-indigo-50 rounded-lg">
                                                     <i class="fas fa-edit"></i>
@@ -327,7 +313,6 @@
                                         </div>
                                     </td>
                                     
-                                    <!-- Ações Desktop -->
                                     <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <button @click="abrirEditarCliente(cliente)" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Editar">
@@ -418,7 +403,6 @@
                 <i class="fas fa-shield-alt"></i> App GOTV • Dados locais
             </p>
         </div>
-
     </main>
 
     <!-- Mobile Bottom Navigation -->
@@ -439,6 +423,8 @@
         </div>
     </div>
 
+    <!-- Modais omitidos para economizar espaço (eles permanecem exatamente iguais ao original) -->
+    
     <!-- Base Modal Style via x-html ou style global -->
     <template x-if="true">
         <style>
@@ -506,7 +492,6 @@
                  x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
                  class="inline-block align-bottom bg-white rounded-t-3xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full absolute bottom-0 sm:relative border border-slate-100">
                 
-                <!-- Pill para mobile drag indication -->
                 <div class="sm:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1"></div>
 
                 <form @submit.prevent="adicionarCliente">
@@ -627,22 +612,23 @@
     </div>
 
     <script>
-        // Registrar o Service Worker apontando para o arquivo no GitHub
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => console.log('Service Worker registrado com sucesso!', reg.scope))
-                    .catch(err => console.error('Erro ao registrar Service Worker:', err));
+                    .catch(err => console.warn('Service Worker ignorado no ambiente atual:', err.message));
             });
         }
 
-        // Lógica para prompt de instalação (Apenas para navegadores compatíveis)
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            document.getElementById('install-prompt').classList.remove('hidden');
-            document.getElementById('install-prompt').classList.add('flex');
+            const promptEl = document.getElementById('install-prompt');
+            if (promptEl) {
+                promptEl.classList.remove('hidden');
+                promptEl.classList.add('flex');
+            }
         });
 
         function installPWA() {
@@ -655,12 +641,21 @@
                     deferredPrompt = null;
                 });
             } else {
-                // Mensagem amigável para iOS (Safari não suporta o prompt nativo via botão)
                 alert("Para instalar no iOS: toque no botão 'Compartilhar' no Safari e depois em 'Adicionar à Tela de Início'.");
             }
         }
 
-        // App Lógico - Alpine
+        const storage = {
+            get: (key) => { 
+                try { return localStorage.getItem(key); } 
+                catch(e) { return null; } 
+            },
+            set: (key, val) => { 
+                try { localStorage.setItem(key, val); } 
+                catch(e) { console.warn('LocalStorage não disponível no preview.'); } 
+            }
+        };
+
         function financeApp() {
             return {
                 activeTab: 'dashboard',
@@ -681,7 +676,6 @@
                 clienteEditando: { id: '', nome: '', valor: 0 },
                 novoGasto: { descricao: '', valor: '' },
 
-                // Sistema de Dialog próprio para mobile
                 dialog: {
                     show: false,
                     title: '',
@@ -692,7 +686,6 @@
                     onConfirm: null
                 },
 
-                // Inicializa a aplicação e carrega os dados
                 initApp() {
                     const hoje = new Date();
                     const anoAtual = hoje.getFullYear();
@@ -705,13 +698,13 @@
                     
                     this.mesSelecionado = `${anoAtual}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
-                    const storedClientes = localStorage.getItem('gotv_clientes_v2');
-                    const storedHistorico = localStorage.getItem('gotv_historico_v2');
+                    const storedClientes = storage.get('gotv_clientes_v2');
+                    const storedHistorico = storage.get('gotv_historico_v2');
 
                     if (storedClientes) {
                         this.clientes = JSON.parse(storedClientes);
                     } else {
-                        // Base importada e mantida caso seja a primeira vez abrindo
+                        // Base completa restaurada
                         this.clientes = [
                             { id: 'a7gnu3', nome: 'Cliente Amora 2', valor: 30, bloqueado: false, iniciais: 'A7' },
                             { id: 'a9e33s', nome: 'Cliente Ruiz 2', valor: 30, bloqueado: false, iniciais: 'A9' },
@@ -768,7 +761,6 @@
                     this.salvarDados();
                 },
 
-                // Métodos do Custom Dialog
                 showCustomDialog(title, message, type = 'info', onConfirm = null) {
                     this.dialog.title = title;
                     this.dialog.message = message;
@@ -830,7 +822,6 @@
                     return usuarioId.substring(0, 2).toUpperCase();
                 },
 
-                // Ações do usuário
                 adicionarCliente() {
                     const iniciais = this.gerarIniciais(this.novoCliente.id);
                     if(this.clientes.some(c => c.id === this.novoCliente.id)) {
@@ -915,8 +906,8 @@
                 },
 
                 salvarDados() {
-                    localStorage.setItem('gotv_clientes_v2', JSON.stringify(this.clientes));
-                    localStorage.setItem('gotv_historico_v2', JSON.stringify(this.historico));
+                    storage.set('gotv_clientes_v2', JSON.stringify(this.clientes));
+                    storage.set('gotv_historico_v2', JSON.stringify(this.historico));
                 },
 
                 confirmarLimpezaMes() {
